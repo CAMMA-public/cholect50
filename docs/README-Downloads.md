@@ -92,7 +92,7 @@ When using the dataset, you are kindly requested to cite the associated publicat
 
 - **<font color="green">Official release date:</font>** June 1, 2022
 - **<font color="green">Associated publication:</font>** Nwoye, et.al. 2023 [[3]](#cite-ct2022)
-- **<font color="green">Download access:</font>** [Download now]()
+- **<font color="green">Download access:</font>** [Download now](https://s3.unistra.fr/camma_public/datasets/cholect50/CholecT50-Challenge-Validation.zip)
     <details>
       <summary><b><font color="green">More info:</font></b></summary>
       <table>
