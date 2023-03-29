@@ -189,7 +189,7 @@ class T50(Dataset):
         self.target_transform = target_transform
         
     def __len__(self):
-        return len(self.triplet_labels)
+        return len(self.frames)
 
     def get_binary_labels(self, labels):
         tool_label = np.zeros([6])
@@ -200,19 +200,19 @@ class T50(Dataset):
         for label in labels:
             triplet = label[0:1]
             if triplet[0] != -1.0:
-                triplet_label[triplet[0]] += 1
+                triplet_label[triplet[0]] = 1
             tool = label[1:7]
             if tool[0] != -1.0:
-                tool_label[tool[0]] += 1
+                tool_label[tool[0]] = 1
             verb = label[7:8]
             if verb[0] != -1.0:
-                verb_label[verb[0]] += 1
+                verb_label[verb[0]] = 1
             target = label[8:14]  
             if target[0] != -1.0:   
-                target_label[target[0]] += 1       
+                target_label[target[0]] = 1       
             phase = label[14:15]
             if phase[0] != -1.0:
-                phase_label[phase[0]] += 1
+                phase_label[phase[0]] = 1
         return (triplet_label, tool_label, verb_label, target_label, phase_label)
     
     def __getitem__(self, index):        
