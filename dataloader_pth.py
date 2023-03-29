@@ -36,6 +36,7 @@ Copyright 2021 The Research Group CAMMA Authors All Rights Reserved.
 import os
 import json
 import random
+import torch
 import numpy as np
 from PIL import Image
 import torchvision.transforms as transforms
@@ -58,7 +59,7 @@ class CholecT50():
                 batch_size: int, 
                 shuffle: True or False
             Return
-                tuple ((image), (tool_label, verb_label, target_label, triplet_label))
+                tuple ((image), (tool_label, verb_label, target_label, triplet_label, phase_label))
         """
         self.normalize   = normalize
         self.dataset_dir = dataset_dir
@@ -98,6 +99,7 @@ class CholecT50():
         self.build_train_dataset(trainform)
         self.build_val_dataset(trainform)
         self.build_test_dataset(testform)
+        self.target_transform = self.to_binary
     
     def list_dataset_variants(self):
         print(self.list_dataset_variant)
@@ -147,13 +149,22 @@ class CholecT50():
         testform  = transforms.Compose(op_test)
         trainform = transforms.Compose(op_train)
         return trainform, testform
+    
+    def to_binary(self, label_list):
+        outputs = []
+        for label in label_list:
+            label = torch.tensor(label).bool().int()
+            outputs.append(label)
+        return outputs
+
 
     def build_train_dataset(self, transform):
         iterable_dataset = []
         for video in self.train_records:
             dataset = T50(img_dir = os.path.join(self.dataset_dir, 'videos', video), 
                           label_file = os.path.join(self.dataset_dir, 'labels', '{}.json'.format(video)),
-                          transform=transform)
+                          transform=transform,
+                          target_transform=self.target_transform)
             iterable_dataset.append(dataset)
         self.train_dataset = ConcatDataset(iterable_dataset)
 
@@ -162,7 +173,8 @@ class CholecT50():
         for video in self.val_records:
             dataset = T50(img_dir = os.path.join(self.dataset_dir, 'videos', video), 
                           label_file = os.path.join(self.dataset_dir, 'labels', '{}.json'.format(video)),
-                          transform=transform)
+                          transform=transform,
+                          target_transform=self.target_transform)
             iterable_dataset.append(dataset)
         self.val_dataset = ConcatDataset(iterable_dataset)
 
@@ -171,7 +183,8 @@ class CholecT50():
         for video in self.test_records:
             dataset = T50(img_dir = os.path.join(self.dataset_dir, 'videos', video), 
                           label_file = os.path.join(self.dataset_dir, 'labels', '{}.json'.format(video)), 
-                          transform=transform)
+                          transform=transform,
+                          target_transform=self.target_transform)
             iterable_dataset.append(dataset)
         self.test_dataset = iterable_dataset
         
@@ -200,32 +213,32 @@ class T50(Dataset):
         for label in labels:
             triplet = label[0:1]
             if triplet[0] != -1.0:
-                triplet_label[triplet[0]] = 1
+                triplet_label[triplet[0]] += 1
             tool = label[1:7]
             if tool[0] != -1.0:
-                tool_label[tool[0]] = 1
+                tool_label[tool[0]] += 1
             verb = label[7:8]
             if verb[0] != -1.0:
-                verb_label[verb[0]] = 1
+                verb_label[verb[0]] += 1
             target = label[8:14]  
             if target[0] != -1.0:   
-                target_label[target[0]] = 1       
+                target_label[target[0]] += 1       
             phase = label[14:15]
             if phase[0] != -1.0:
-                phase_label[phase[0]] = 1
+                phase_label[phase[0]] += 1
         return (triplet_label, tool_label, verb_label, target_label, phase_label)
     
     def __getitem__(self, index):        
-        labels = self.label_data["annotations"][self.frames[index]]
+        labels   = self.label_data["annotations"][self.frames[index]]
         basename = "{}.png".format(str(self.frames[index]).zfill(6))
         img_path = os.path.join(self.img_dir, basename)
         image    = Image.open(img_path)
-        ivt, i, v, t, p = self.get_binary_labels(labels)
+        labels   = self.get_binary_labels(labels)
         if self.transform:
             image = self.transform(image)
         if self.target_transform:
             labels = self.target_transform(labels)
-        return image, (ivt, i, v, t, p)
+        return image, labels
 
 if __name__ == "__main__":
     print("Refers to https://github.com/CAMMA-public/cholect45 for the usage guide.")

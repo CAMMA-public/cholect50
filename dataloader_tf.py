@@ -32,6 +32,7 @@ Copyright 2021 The Research Group CAMMA Authors All Rights Reserved.
 """
 
 import os
+import json
 import random
 import numpy as np
 from PIL import Image
@@ -163,26 +164,51 @@ class CholecT50():
     def list_dataset_variants(self):
         print(self.list_dataset_variant)
 
+    def get_binary_labels(self, labels):
+        tool_label = np.zeros([6])
+        verb_label = np.zeros([10])
+        target_label = np.zeros([15])
+        triplet_label = np.zeros([100])
+        phase_label = np.zeros([100])
+        for label in labels:
+            triplet = label[0:1]
+            if triplet[0] != -1.0:
+                triplet_label[triplet[0]] = 1
+            tool = label[1:7]
+            if tool[0] != -1.0:
+                tool_label[tool[0]] = 1
+            verb = label[7:8]
+            if verb[0] != -1.0:
+                verb_label[verb[0]] = 1
+            target = label[8:14]  
+            if target[0] != -1.0:   
+                target_label[target[0]] = 1       
+            phase = label[14:15]
+            if phase[0] != -1.0:
+                phase_label[phase[0]] = 1
+        return (triplet_label, tool_label, verb_label, target_label, phase_label)
+    
     def generator(self, records):
         for record in records:
-            video_path      = os.path.join(self.dataset_dir, "data/{}".format(record.decode("utf-8")))
-            triplet_file    = np.loadtxt(os.path.join(self.dataset_dir, "triplet/{}.txt".format(record.decode("utf-8"))), dtype=np.int, delimiter=',',)
-            tool_file       = np.loadtxt(os.path.join(self.dataset_dir, "instrument/{}.txt".format(record.decode("utf-8") )), dtype=np.int, delimiter=',',)
-            verb_file       = np.loadtxt(os.path.join(self.dataset_dir, "verb/{}.txt".format(record.decode("utf-8") )), dtype=np.int, delimiter=',',)
-            target_file     = np.loadtxt(os.path.join(self.dataset_dir, "target/{}.txt".format(record.decode("utf-8") )), dtype=np.int, delimiter=',',)
-            for i,v,t,ivt in zip(tool_file, verb_file, target_file, triplet_file):
-                assert i[0]==v[0]==t[0]==ivt[0]
-                image_path  = os.path.join(video_path, "{}.png".format(str(ivt[0]).zfill(6)))
-                image       = Image.open(image_path)
-                image       = image.resize(size=(448,256))
-                yield image, (i[1:], v[1:], t[1:], ivt[1:])               
+            video_path = os.path.join(self.dataset_dir, "videos/{}".format(record.decode("utf-8")))
+            label_file = os.path.join(self.dataset_dir, "labels/{}.json".format(record.decode("utf-8")))
+            label_data = json.load(open(label_file, "rb"))
+            label_data = label_data["annotations"]
+            uframes    = sorted(list(label_data.keys()))
+            for frame in uframes:
+                img_path = os.path.join(self.img_dir, "{:0>6}.png".format(self.frame))
+                image    = Image.open(img_path)
+                image    = image.resize(size=(448,256))
+                labels   = label_data["annotations"][frame]
+                ivt, i, v, t, p = self.get_binary_labels(labels)
+                yield image, (ivt, i, v, t, p)           
 
     def build_train_dataset(self):
         self.train_dataset = tf.data.Dataset.from_generator(
                 self.generator,
                 args = [self.train_records],
-                output_types = (tf.float32, (tf.int32, tf.int32, tf.int32, tf.int32)),
-                output_shapes = ([256, 448,3], ([6], [10], [15], [100]))
+                output_types = (tf.float32, (tf.int32, tf.int32, tf.int32, tf.int32, tf.int32)),
+                output_shapes = ([256, 448,3], ([6], [10], [15], [100], [7]))
             )
         self.train_dataset = self.train_dataset.map(self.augmentation, num_parallel_calls=self.num_parallel_calls)           
 
@@ -190,8 +216,8 @@ class CholecT50():
         self.val_dataset = tf.data.Dataset.from_generator(
                 self.generator,
                 args = [self.val_records],
-                output_types = (tf.float32, (tf.int32, tf.int32, tf.int32, tf.int32)),
-                output_shapes = ([256, 448,3], ([6], [10], [15], [100]))
+                output_types = (tf.float32, (tf.int32, tf.int32, tf.int32, tf.int32, tf.int32)),
+                output_shapes = ([256, 448,3], ([6], [10], [15], [100], [7]))
             )
         self.val_dataset = self.val_dataset.map(self.augmentation, num_parallel_calls=self.num_parallel_calls)   
 
@@ -201,8 +227,8 @@ class CholecT50():
             test_dataset = tf.data.Dataset.from_generator(
                 self.generator,
                 args = [[video]],
-                output_types = (tf.float32, (tf.int32, tf.int32, tf.int32, tf.int32)),
-                output_shapes = ([256, 448,3], ([6], [10], [15], [100]))
+                output_types = (tf.float32, (tf.int32, tf.int32, tf.int32, tf.int32, tf.int32)),
+                output_shapes = ([256, 448,3], ([6], [10], [15], [100], [7]))
             )
             self.test_dataset.append(test_dataset)
 
