@@ -96,10 +96,10 @@ class CholecT50():
         for aug in augmentation_list:
             self.augmentation_list.append(self.augmentations[aug])
         trainform, testform = self.transform()
+        self.target_transform = self.to_binary
         self.build_train_dataset(trainform)
         self.build_val_dataset(trainform)
         self.build_test_dataset(testform)
-        self.target_transform = self.to_binary
     
     def list_dataset_variants(self):
         print(self.list_dataset_variant)
