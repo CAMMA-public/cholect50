@@ -4,6 +4,9 @@
 </a>
 </div>
 
+###  News
+- [ **17/09/2025** ]: Check out our [CAMMA Dataset Overlaps](https://github.com/CAMMA-public/camma_dataset_overlaps) repository for an analysis of video overlaps across Cholec80, CholecT50, and Endoscapes to ensure fair dataset splits.
+
 ------------------------------------------------------
 
 <div align="right">
